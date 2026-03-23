@@ -1,4 +1,4 @@
-# 📚 Tugas Reminder System
+# Tugas Reminder System
 
 Sistem reminder tugas mahasiswa berbasis automation.
 
@@ -15,7 +15,7 @@ Sistem reminder tugas mahasiswa berbasis automation.
 | Bot        | Telegram Bot API                 |
 | Infra      | Docker Compose                   |
 
-## 🚀 Cara Menjalankan
+## Cara Menjalankan
 
 ### 1. Setup Environment
 
