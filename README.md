@@ -1,54 +1,25 @@
-# 📚 Tugas Reminder — Sistem Reminder Tugas E-Learning
+# 📚 Tugas Reminder System
 
-Sistem otomatis untuk mengingatkan mahasiswa tentang deadline tugas melalui **Telegram Channel**. Dosen menginput tugas via web, sistem otomatis mengirim reminder **H-3**, **H-1**, dan **Hari H** ke Telegram.
+Sistem reminder tugas mahasiswa berbasis automation.
 
-## Alur Sistem
+**Alur:** Frontend → Backend → PostgreSQL → OpenClaw → Telegram Bot → Mahasiswa
 
-```
-Dosen input tugas di Frontend React
-        ↓
-Backend Golang simpan ke tabel tugas (PostgreSQL Neon)
-Backend otomatis generate 3 reminder (H-3, H-1, H0)
-        ↓
-OpenClaw Scheduler (Node.js, cron setiap jam)
-Cek: ada reminder_date = hari ini yang belum terkirim?
-        ↓
-Jika ada → format pesan → kirim ke Telegram Channel
-        ↓
-Catat hasil di notification_log (success/failed)
-        ↓
-Mahasiswa di channel Telegram menerima notifikasi 🔔
-```
+## Tech Stack
 
-## Stack Teknologi
+| Layer      | Teknologi                        |
+|------------|----------------------------------|
+| Frontend   | React + Vite + TypeScript + TailwindCSS |
+| Backend    | Golang (Gin)                     |
+| Database   | PostgreSQL                       |
+| Automation | OpenClaw (Node.js)               |
+| Bot        | Telegram Bot API                 |
+| Infra      | Docker Compose                   |
 
-| Layer | Teknologi |
-|-------|-----------|
-| Frontend | React + Vite + TypeScript + TailwindCSS |
-| Backend | Golang (Gin + pgx) |
-| Database | PostgreSQL (Neon — cloud) |
-| Automation | Node.js (OpenClaw scheduler) |
-| Notifikasi | Telegram Bot API |
-| Container | Docker + Docker Compose |
+## 🚀 Cara Menjalankan
 
-## Prerequisites
+### 1. Setup Environment
 
-- [Docker](https://docs.docker.com/get-docker/) & Docker Compose
-- [Node.js 18+](https://nodejs.org/) (untuk development lokal)
-- [Go 1.21+](https://go.dev/) (untuk development lokal)
-- Akun [Neon](https://neon.tech/) (PostgreSQL cloud)
-- Telegram Bot (dari [@BotFather](https://t.me/BotFather))
-
-## Setup
-
-### 1. Clone Repository
-
-```bash
-git clone https://github.com/username/Reminder.git
-cd Reminder
-```
-
-### 2. Konfigurasi Environment
+Salin dan edit file `.env`:
 
 ```bash
 cp .env.example .env
