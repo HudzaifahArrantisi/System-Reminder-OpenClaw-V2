@@ -24,6 +24,77 @@ Sistem pengelolaan tugas E-Learning yang cerdas dengan integrasi notifikasi otom
 
 ---
 
+## 📊 System Diagrams
+
+### Use Case Diagram
+```mermaid
+useCaseDiagram
+    actor Dosen
+    actor Mahasiswa
+    actor OpenClaw as "OpenClaw Scheduler"
+    actor Telegram as "Telegram Bot"
+
+    package "OpenClaw E-Learning System" {
+        usecase UC1 as "Login Portal"
+        usecase UC2 as "Pilih Matkul & Pertemuan"
+        usecase UC3 as "Upload Tugas (Set Deadline)"
+        usecase UC4 as "Lihat Tugas & Download Materi"
+        usecase UC5 as "Upload Jawaban Tugas"
+        usecase UC6 as "Kirim Notifikasi Instan"
+        usecase UC7 as "Kirim Reminder (H-3 s/d H0)"
+    }
+
+    Dosen --> UC1
+    Dosen --> UC2
+    Dosen --> UC3
+    
+    UC3 ..> UC6 : <<include>>
+    UC6 --> Telegram
+
+    Mahasiswa --> UC1
+    Mahasiswa --> UC2
+    Mahasiswa --> UC4
+    Mahasiswa --> UC5
+
+    OpenClaw --> UC7
+    UC7 --> Telegram
+```
+
+### System Flowchart
+```mermaid
+flowchart TD
+    %% Actors
+    D[Dosen]
+    M[Mahasiswa]
+    OC[OpenClaw Scheduler]
+    TB[Telegram Bot]
+    
+    %% Components
+    BE[Backend Node.js]
+    DB[(PostgreSQL Neon)]
+    
+    %% Dosen Flow
+    D -->|1. Login & Upload Tugas| BE
+    BE -->|2. Simpan Data| DB
+    BE -->|3. Kirim Notifikasi Instan| TB
+    BE -->|4. Log Notifikasi H-0| DB
+    
+    %% OpenClaw Flow
+    OC -->|5. Cek Tugas Berkala| DB
+    DB -->|6. Kirim Data Tugas Aktif| OC
+    OC -->|7. Hitung Selisih Hari| OC
+    OC -->|8. Cek Notification Log| DB
+    OC -->|9. Kirim Reminder H-3, H-2, H-1, H0| TB
+    OC -->|10. Update Log Notifikasi| DB
+    
+    %% Mahasiswa Flow
+    M -->|11. Login & Dashboard| BE
+    BE -->|12. Fetch Tugas & Deadline| DB
+    M -->|13. Submit Jawaban| BE
+```
+
+---
+
 ## 📂 Struktur Folder
 ```
 Reminder/
