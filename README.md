@@ -1,6 +1,6 @@
 # 🎓 OpenClaw E-Learning Task Reminder
 
-![OpenClaw Banner](frontend/public/openclaw.jpg)
+![OpenClaw Banner](frontend/public/openclaw1.jpg)
 
 Sistem pengelolaan tugas E-Learning yang cerdas dengan integrasi notifikasi otomatis ke **Telegram Bot**. Dirancang khusus untuk mempermudah **Dosen** memberikan tugas dan **Mahasiswa** memantau deadline secara tepat waktu.
 
