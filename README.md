@@ -1,4 +1,4 @@
-# 🎓 OpenClaw E-Learning Task Reminder
+# OpenClaw E-Learning Task Reminder
 
 ![OpenClaw Banner](frontend/public/openclaw1.jpg)
 
@@ -6,7 +6,7 @@ Sistem pengelolaan tugas E-Learning yang cerdas dengan integrasi notifikasi otom
 
 ---
 
-## 🚀 Fitur Utama
+##  Fitur Utama
 - **Role-Based Portal**: Dashboard yang berbeda untuk Dosen dan Mahasiswa.
 - **Dynamic Meeting Grid**: 16 Pertemuan per mata kuliah dengan manajemen tugas per pertemuan.
 - **Instant Notification**: Notifikasi Telegram langsung terkirim begitu Dosen menekan tombol "Upload Tugas".
@@ -15,7 +15,7 @@ Sistem pengelolaan tugas E-Learning yang cerdas dengan integrasi notifikasi otom
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 - **Frontend**: React + Vite + TailwindCSS + React Router.
 - **Backend API**: Node.js + Express.js.
 - **Database**: PostgreSQL (Neon Serverless).
@@ -24,7 +24,7 @@ Sistem pengelolaan tugas E-Learning yang cerdas dengan integrasi notifikasi otom
 
 ---
 
-## 📊 System Diagrams
+##  System Diagrams
 
 ### Use Case Diagram
 ```mermaid
@@ -96,7 +96,7 @@ flowchart TD
 
 ---
 
-## 📂 Struktur Folder
+##  Struktur Folder
 ```
 Reminder/
 ├── backend-node/      # Express API Server (Port 5000)
@@ -108,7 +108,7 @@ Reminder/
 
 ---
 
-## ⚙️ Cara Menjalankan Project
+##  Cara Menjalankan Project
 
 ### 1. Persiapan Environment
 Pastikan file `.env` di folder root sudah terisi dengan benar:
