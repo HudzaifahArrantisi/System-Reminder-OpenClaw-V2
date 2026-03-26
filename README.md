@@ -84,6 +84,3 @@ npm start
    - Cek Pertemuan 2: Tugas yang dibuat Dosen tadi akan muncul di sini.
 
 ---
-
-## 📝 Licence
-Created with 💙 by Antigravity Assistant.
