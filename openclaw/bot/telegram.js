@@ -1,58 +1,50 @@
 /**
- * bot/telegram.js — Integrasi Telegram Bot untuk mengirim notifikasi.
- * Menggunakan node-telegram-bot-api.
+ * bot/telegram.js — Integrasi Bot Telegram.
+ * Mengirim pesan ke channel/group menggunakan Telegram Bot API.
  */
 
-const TelegramBot = require("node-telegram-bot-api");
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
-const token = process.env.TELEGRAM_BOT_TOKEN;
-const chatId = process.env.TELEGRAM_CHAT_ID;
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
 
-// Inisialisasi bot (polling mode tidak diperlukan, hanya kirim pesan)
-let bot = null;
-
-/**
- * Menginisialisasi bot Telegram.
- */
-function initBot() {
-  if (!token || token === "xxxx") {
-    console.warn("⚠️  TELEGRAM_BOT_TOKEN belum dikonfigurasi. Bot tidak aktif.");
-    return;
-  }
-  bot = new TelegramBot(token);
-  console.log("✅ Telegram Bot diinisialisasi");
+if (!BOT_TOKEN) {
+  console.warn('⚠️  TELEGRAM_BOT_TOKEN tidak diset di environment');
+}
+if (!CHANNEL_ID) {
+  console.warn('⚠️  TELEGRAM_CHANNEL_ID tidak diset di environment');
 }
 
 /**
- * Mengirim pesan reminder ke Telegram.
- * @param {Object} tugas - Objek tugas
- * @param {string} reminderType - Tipe reminder (H-3, H-1, Hari H)
+ * Kirim pesan ke Telegram channel/group.
+ * @param {string} message - Pesan dalam format Markdown
+ * @returns {Promise<boolean>} true jika berhasil
  */
-async function sendReminder(tugas, reminderType) {
-  if (!bot) {
-    console.log(`[DRY RUN] [${reminderType}] Tugas: ${tugas.nama_tugas} - ${tugas.matkul}, Deadline: ${tugas.deadline}`);
-    return;
+async function sendMessage(message) {
+  if (!BOT_TOKEN || !CHANNEL_ID) {
+    throw new Error('TELEGRAM_BOT_TOKEN atau TELEGRAM_CHANNEL_ID belum diset');
   }
 
-  if (!chatId || chatId === "xxxx") {
-    console.warn("⚠️  TELEGRAM_CHAT_ID belum dikonfigurasi.");
-    return;
+  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: CHANNEL_ID,
+      text: message,
+      parse_mode: 'HTML',
+    }),
+  });
+
+  const data = await res.json();
+
+  if (!data.ok) {
+    throw new Error(`Telegram API error: ${data.description}`);
   }
 
-  const message =
-    `📋 *[REMINDER - ${reminderType}]*\n\n` +
-    `📚 Mata Kuliah: *${tugas.matkul}*\n` +
-    `📝 Tugas: *${tugas.nama_tugas}*\n` +
-    `📅 Pertemuan: ${tugas.pertemuan}\n` +
-    `⏰ Deadline: *${tugas.deadline}*\n\n` +
-    `Jangan lupa kerjakan tugasmu! 💪`;
-
-  try {
-    await bot.sendMessage(chatId, message, { parse_mode: "Markdown" });
-    console.log(`✅ Reminder ${reminderType} terkirim untuk: ${tugas.nama_tugas}`);
-  } catch (err) {
-    console.error(`❌ Gagal kirim reminder: ${err.message}`);
-  }
+  return true;
 }
 
-module.exports = { initBot, sendReminder };
+module.exports = { sendMessage };

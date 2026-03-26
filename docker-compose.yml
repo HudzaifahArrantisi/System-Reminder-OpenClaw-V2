@@ -1,32 +1,39 @@
-version: "3.8"
+version: '3.8'
 
 services:
-  # ── Backend Golang ──
   backend:
     build: ./backend
-    env_file: .env
     ports:
       - "8080:8080"
-    networks:
-      - app-network
+    env_file:
+      - .env
+    environment:
+      - GIN_MODE=release
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/matkul"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # ── OpenClaw Automation ──
-  openclaw:
-    build: ./openclaw
-    env_file: .env
-    networks:
-      - app-network
-
-  # ── Frontend React ──
   frontend:
     build: ./frontend
     ports:
-      - "3000:80"
+      - "5173:80"
     depends_on:
       - backend
-    networks:
-      - app-network
+    restart: unless-stopped
+
+  openclaw:
+    build: ./openclaw
+    env_file:
+      - .env
+    environment:
+      - BACKEND_URL=http://backend:8080
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 networks:
-  app-network:
-    driver: bridge
+  default:
+    name: tugas-reminder-network

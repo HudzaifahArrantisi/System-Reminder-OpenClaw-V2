@@ -1,71 +1,194 @@
-# 📚 Tugas Reminder System
+# 📚 Tugas Reminder — Sistem Reminder Tugas E-Learning
 
-Sistem reminder tugas mahasiswa berbasis automation.
+Sistem otomatis untuk mengingatkan mahasiswa tentang deadline tugas melalui **Telegram Channel**. Dosen menginput tugas via web, sistem otomatis mengirim reminder **H-3**, **H-1**, dan **Hari H** ke Telegram.
 
-**Alur:** Frontend → Backend → PostgreSQL → OpenClaw → Telegram Bot → Mahasiswa
+## Alur Sistem
 
-## Tech Stack
+```
+Dosen input tugas di Frontend React
+        ↓
+Backend Golang simpan ke tabel tugas (PostgreSQL Neon)
+Backend otomatis generate 3 reminder (H-3, H-1, H0)
+        ↓
+OpenClaw Scheduler (Node.js, cron setiap jam)
+Cek: ada reminder_date = hari ini yang belum terkirim?
+        ↓
+Jika ada → format pesan → kirim ke Telegram Channel
+        ↓
+Catat hasil di notification_log (success/failed)
+        ↓
+Mahasiswa di channel Telegram menerima notifikasi 🔔
+```
 
-| Layer      | Teknologi                        |
-|------------|----------------------------------|
-| Frontend   | React + Vite + TypeScript + TailwindCSS |
-| Backend    | Golang (Gin)                     |
-| Database   | PostgreSQL                       |
-| Automation | OpenClaw (Node.js)               |
-| Bot        | Telegram Bot API                 |
-| Infra      | Docker Compose                   |
+## Stack Teknologi
 
-## 🚀 Cara Menjalankan
+| Layer | Teknologi |
+|-------|-----------|
+| Frontend | React + Vite + TypeScript + TailwindCSS |
+| Backend | Golang (Gin + pgx) |
+| Database | PostgreSQL (Neon — cloud) |
+| Automation | Node.js (OpenClaw scheduler) |
+| Notifikasi | Telegram Bot API |
+| Container | Docker + Docker Compose |
 
-### 1. Setup Environment
+## Prerequisites
 
-Salin dan edit file `.env`:
+- [Docker](https://docs.docker.com/get-docker/) & Docker Compose
+- [Node.js 18+](https://nodejs.org/) (untuk development lokal)
+- [Go 1.21+](https://go.dev/) (untuk development lokal)
+- Akun [Neon](https://neon.tech/) (PostgreSQL cloud)
+- Telegram Bot (dari [@BotFather](https://t.me/BotFather))
+
+## Setup
+
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/username/Reminder.git
+cd Reminder
+```
+
+### 2. Konfigurasi Environment
 
 ```bash
 cp .env.example .env
-# Edit TELEGRAM_BOT_TOKEN dan TELEGRAM_CHAT_ID
 ```
 
-### 2. Jalankan dengan Docker
+Edit `.env` dan isi:
+
+```env
+# PostgreSQL Neon — dapatkan dari dashboard Neon
+DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require&channel_binding=require
+
+# Telegram Bot — dapatkan dari @BotFather
+TELEGRAM_BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
+TELEGRAM_CHANNEL_ID=@nama_channel_kamu
+```
+
+### 3. Setup Database
+
+Jalankan SQL migration di Neon Console atau psql:
 
 ```bash
-docker compose up --build -d
+psql $DATABASE_URL -f backend/migrations/001_init.sql
 ```
 
-### 3. Akses Aplikasi
+### 4. Buat Telegram Bot & Channel
 
-- **Frontend:** http://localhost:3000
-- **Backend API:** http://localhost:8080
+#### Membuat Bot:
+1. Buka [@BotFather](https://t.me/BotFather) di Telegram
+2. Kirim `/newbot`
+3. Ikuti instruksi, beri nama bot
+4. Copy **API Token** yang diberikan → masukkan ke `TELEGRAM_BOT_TOKEN`
 
-### 4. Test
+#### Membuat Channel:
+1. Buat channel baru di Telegram
+2. Jadikan bot sebagai **admin** channel
+3. Jika channel publik: gunakan `@nama_channel` sebagai `TELEGRAM_CHANNEL_ID`
+4. Jika channel private: gunakan chat ID (misal `-1001234567890`)
 
-1. Buka http://localhost:3000
-2. Isi form tugas (mata kuliah, pertemuan, nama tugas, tanggal, deadline)
-3. Klik Submit
-4. Data muncul di daftar tugas
-5. OpenClaw otomatis mengirim reminder ke Telegram pada H-3, H-1, dan Hari H
+#### Cara mendapatkan Chat ID channel private:
+1. Forward sebuah pesan dari channel ke [@userinfobot](https://t.me/userinfobot)
+2. Bot akan mengembalikan chat ID
 
-### 5. Stop
+### 5. Jalankan
+
+#### Dengan Docker (Recommended):
 
 ```bash
-docker compose down
+chmod +x scripts/setup.sh scripts/stop.sh
+./scripts/setup.sh
 ```
 
-## 📁 Struktur Folder
+#### Development Lokal (tanpa Docker):
 
+**Backend:**
+```bash
+cd backend
+go run ./cmd/server/main.go
 ```
-tugas-reminder/
-├── docker-compose.yml
-├── .env
-├── backend/          # Golang REST API
-├── openclaw/         # Node.js automation engine
-├── frontend/         # React + Vite app
-└── scripts/          # Setup & stop scripts
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
 ```
+
+**OpenClaw:**
+```bash
+cd openclaw
+npm install
+npm start
+```
+
+### 6. Akses Aplikasi
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:8080 |
 
 ## API Endpoints
 
-| Method | Path    | Deskripsi              |
-|--------|---------|------------------------|
-| POST   | /tugas  | Tambah tugas baru      |
-| GET    | /tugas  | Ambil semua tugas      |
+### Mata Kuliah
+
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| GET | `/api/matkul` | Ambil semua matkul |
+| POST | `/api/matkul` | Tambah matkul baru |
+
+### Tugas
+
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| GET | `/api/tugas` | Ambil semua tugas |
+| GET | `/api/tugas/pending-reminders` | Ambil reminder pending hari ini |
+| GET | `/api/tugas/:id` | Ambil tugas by ID |
+| POST | `/api/tugas` | Tambah tugas baru + auto-generate 3 reminder |
+| PUT | `/api/tugas/:id` | Update tugas + regenerate reminder |
+| DELETE | `/api/tugas/:id` | Hapus tugas |
+
+### Notification Log
+
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| POST | `/api/notification-log` | Catat hasil pengiriman notifikasi |
+
+## Tabel Database
+
+| Tabel | Deskripsi |
+|-------|-----------|
+| `mahasiswa` | Data mahasiswa (NIM, nama, telegram_id) |
+| `matkul` | Data mata kuliah |
+| `mahasiswa_matkul` | Relasi many-to-many mahasiswa ↔ matkul |
+| `tugas` | Data tugas (FK ke matkul, pertemuan 1-18) |
+| `reminder` | 3 reminder per tugas: H-3, H-1, H0 |
+| `notification_log` | Log hasil pengiriman notifikasi |
+
+## Cara Test Manual Reminder
+
+1. Tambahkan mata kuliah di frontend
+2. Tambahkan tugas dengan **deadline = hari ini**
+3. Cek endpoint pending reminders:
+   ```bash
+   curl http://localhost:8080/api/tugas/pending-reminders
+   ```
+4. Jalankan OpenClaw manual:
+   ```bash
+   cd openclaw && node -e "require('./ruleEngine').processReminders().then(r => console.log(r))"
+   ```
+
+## Troubleshooting
+
+| Masalah | Solusi |
+|---------|--------|
+| Database connection failed | Pastikan `DATABASE_URL` benar, Neon project aktif |
+| Telegram bot tidak mengirim | Pastikan bot sudah jadi admin channel |
+| CORS error | Pastikan `CORS_ORIGIN` sesuai URL frontend |
+| Reminder tidak terkirim | Cek `pending-reminders` endpoint, pastikan reminder_date = hari ini |
+| Reminder terkirim duplikat | Tidak akan terjadi — query cek `notification_log` status = 'success' |
+
+## License
+
+MIT

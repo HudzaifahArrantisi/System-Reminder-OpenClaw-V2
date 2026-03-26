@@ -2,25 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Reset & base styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
 }
 
-body {
-  font-family: "Inter", system-ui, sans-serif;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-  min-height: 100vh;
-  color: #e2e8f0;
+@layer components {
+  .glass-card {
+    @apply bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl;
+  }
+
+  .input-field {
+    @apply w-full bg-slate-900/60 border border-slate-700/50 text-white 
+           rounded-xl px-4 py-2.5 text-sm outline-none 
+           focus:border-indigo-500/70 focus:ring-1 focus:ring-indigo-500/30
+           placeholder-slate-500 transition-all duration-200;
+  }
+
+  .btn-primary {
+    @apply bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 
+           text-white font-semibold py-2.5 px-4 rounded-xl 
+           transition-all duration-200 text-sm;
+  }
 }
 
-/* Animasi subtle untuk card */
+@layer utilities {
+  .animate-fade-in-up {
+    animation: fadeInUp 0.4s ease both;
+  }
+
+  .animate-slide-down {
+    animation: slideDown 0.2s ease both;
+  }
+
+  .animate-pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -28,6 +53,18 @@ body {
   }
 }
 
-.animate-fade-in-up {
-  animation: fadeInUp 0.5s ease-out;
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }

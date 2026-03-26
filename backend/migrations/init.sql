@@ -1,23 +1,21 @@
--- =========================================
--- EXTENSION
--- =========================================
+-- ============================================
+-- Migration 001: Initial Schema
+-- Reminder Tugas E-Learning System
+-- ============================================
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- =========================================
--- TABEL MAHASISWA
--- =========================================
+-- Tabel mahasiswa
 CREATE TABLE IF NOT EXISTS mahasiswa (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     nim             VARCHAR(20) UNIQUE NOT NULL,
     nama            TEXT NOT NULL,
-    no_hp           VARCHAR(20), -- untuk WA
-    telegram_id     VARCHAR(50), -- untuk bot telegram
+    no_hp           VARCHAR(20),
+    telegram_id     VARCHAR(50),
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =========================================
--- TABEL MATA KULIAH
--- =========================================
+-- Tabel mata kuliah
 CREATE TABLE IF NOT EXISTS matkul (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     nama_matkul     TEXT NOT NULL,
@@ -25,9 +23,7 @@ CREATE TABLE IF NOT EXISTS matkul (
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =========================================
--- RELASI MAHASISWA - MATKUL (ENROLLMENT)
--- =========================================
+-- Tabel relasi mahasiswa-matkul
 CREATE TABLE IF NOT EXISTS mahasiswa_matkul (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     mahasiswa_id    UUID REFERENCES mahasiswa(id) ON DELETE CASCADE,
@@ -36,9 +32,7 @@ CREATE TABLE IF NOT EXISTS mahasiswa_matkul (
     UNIQUE (mahasiswa_id, matkul_id)
 );
 
--- =========================================
--- TABEL TUGAS
--- =========================================
+-- Tabel tugas
 CREATE TABLE IF NOT EXISTS tugas (
     id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     matkul_id         UUID REFERENCES matkul(id) ON DELETE CASCADE,
@@ -49,33 +43,30 @@ CREATE TABLE IF NOT EXISTS tugas (
     created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =========================================
--- TABEL REMINDER (UNTUK OPENCLAW)
--- =========================================
+-- Tabel reminder (H-3, H-1, H0)
 CREATE TABLE IF NOT EXISTS reminder (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tugas_id        UUID REFERENCES tugas(id) ON DELETE CASCADE,
-    reminder_type   VARCHAR(10) NOT NULL, -- H-3, H-1, H0
+    reminder_type   VARCHAR(10) NOT NULL,
     reminder_date   DATE NOT NULL,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =========================================
--- TABEL LOG PENGIRIMAN NOTIFIKASI
--- =========================================
+-- Tabel log notifikasi
 CREATE TABLE IF NOT EXISTS notification_log (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     mahasiswa_id    UUID REFERENCES mahasiswa(id) ON DELETE CASCADE,
     tugas_id        UUID REFERENCES tugas(id) ON DELETE CASCADE,
     reminder_type   VARCHAR(10),
-    status          VARCHAR(20) DEFAULT 'pending', -- success / failed
+    status          VARCHAR(20) DEFAULT 'pending',
     sent_at         TIMESTAMP,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =========================================
--- INDEX (BIAR CEPAT)
--- =========================================
-CREATE INDEX idx_tugas_deadline ON tugas(deadline);
-CREATE INDEX idx_reminder_date ON reminder(reminder_date);
-CREATE INDEX idx_notification_status ON notification_log(status);
+-- Indexes untuk performa query
+CREATE INDEX IF NOT EXISTS idx_tugas_deadline ON tugas(deadline);
+CREATE INDEX IF NOT EXISTS idx_tugas_matkul_id ON tugas(matkul_id);
+CREATE INDEX IF NOT EXISTS idx_reminder_date ON reminder(reminder_date);
+CREATE INDEX IF NOT EXISTS idx_reminder_tugas_id ON reminder(tugas_id);
+CREATE INDEX IF NOT EXISTS idx_notification_status ON notification_log(status);
+CREATE INDEX IF NOT EXISTS idx_notification_tugas_id ON notification_log(tugas_id);

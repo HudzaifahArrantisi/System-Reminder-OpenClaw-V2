@@ -1,16 +1,12 @@
 /**
- * index.js — Entry point OpenClaw.
- * Menginisialisasi Telegram bot dan menjalankan scheduler.
+ * OpenClaw Automation Engine
+ * Entry point — menjalankan scheduler reminder tugas ke Telegram.
  */
 
-const { initBot } = require("./bot/telegram");
-const { startScheduler } = require("./scheduler");
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
-console.log("🚀 OpenClaw - Automation Engine dimulai");
-console.log("=".repeat(40));
+const { startScheduler } = require('./scheduler');
 
-// Inisialisasi Telegram Bot
-initBot();
-
-// Jalankan Scheduler
+console.log('🦞 OpenClaw Reminder Engine starting...');
 startScheduler();
