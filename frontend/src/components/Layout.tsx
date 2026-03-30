@@ -1,12 +1,13 @@
-import { Outlet, Navigate, Link, useNavigate } from "react-router-dom";
+import { Outlet, Navigate, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/auth" state={{ from: location.pathname }} replace />;
   }
 
   const handleLogout = () => {
@@ -24,15 +25,32 @@ export default function Layout() {
         { name: "Matkul Saya", path: "/mahasiswa/courses" },
       ];
 
+  const roleTheme =
+    user.role === "dosen"
+      ? {
+          sidebar: "from-slate-900 via-slate-900 to-slate-800 border-slate-700/70",
+          rolePill: "bg-blue-500/10 text-blue-200 border-blue-500/30",
+          navActive: "bg-blue-500/15 text-blue-100 border-blue-500/30",
+          navIdle: "text-slate-300 hover:bg-slate-800 hover:text-slate-100",
+        }
+      : {
+          sidebar: "from-slate-900 via-slate-900 to-slate-800 border-slate-700/70",
+          rolePill: "bg-emerald-500/10 text-emerald-200 border-emerald-500/30",
+          navActive: "bg-emerald-500/15 text-emerald-100 border-emerald-500/30",
+          navIdle: "text-slate-300 hover:bg-slate-800 hover:text-slate-100",
+        };
+
   return (
     <div className="flex h-screen bg-slate-900 text-slate-100 font-sans">
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-800 border-r border-slate-700/50 hidden md:flex flex-col">
+      <aside className={`w-64 bg-gradient-to-b ${roleTheme.sidebar} border-r hidden md:flex flex-col`}>
         <div className="p-6 border-b border-slate-700/50">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+          <h1 className="text-xl font-black bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
             OpenClaw E-Learning
           </h1>
-          <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest">{user.role}</p>
+          <p className={`mt-3 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-widest ${roleTheme.rolePill}`}>
+            {user.role === "dosen" ? "Mode Dosen" : "Mode Mahasiswa"}
+          </p>
         </div>
         
         <nav className="flex-1 p-4 space-y-2">
@@ -40,7 +58,11 @@ export default function Layout() {
             <Link 
               key={item.path} 
               to={item.path}
-              className="block px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors"
+              className={`block px-4 py-3 rounded-lg border transition-all ${
+                location.pathname === item.path
+                  ? roleTheme.navActive
+                  : `border-transparent ${roleTheme.navIdle}`
+              }`}
             >
               {item.name}
             </Link>

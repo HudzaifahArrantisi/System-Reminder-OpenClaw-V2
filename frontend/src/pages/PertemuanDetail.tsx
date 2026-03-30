@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { fetchTugasByPertemuan, createTugas } from "../api/client";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { fetchTugasByPertemuan, createTugas, type TugasItem } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 
 export default function PertemuanDetail() {
   const { pertemuanId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [tugasList, setTugasList] = useState<any[]>([]);
+  const [tugasList, setTugasList] = useState<TugasItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitMsg, setSubmitMsg] = useState("");
 
   // Form State
   const [title, setTitle] = useState("");
@@ -16,8 +17,9 @@ export default function PertemuanDetail() {
   const [deadline, setDeadline] = useState("");
 
   const loadTugas = () => {
-    if (pertemuanId) {
-      fetchTugasByPertemuan(pertemuanId)
+    if (pertemuanId && user) {
+      setLoading(true);
+      fetchTugasByPertemuan(pertemuanId, user.role, user.id)
         .then(setTugasList)
         .catch(console.error)
         .finally(() => setLoading(false));
@@ -26,7 +28,7 @@ export default function PertemuanDetail() {
 
   useEffect(() => {
     loadTugas();
-  }, [pertemuanId]);
+  }, [pertemuanId, user]);
 
   const handleUploadTugas = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +72,12 @@ export default function PertemuanDetail() {
         <h1 className="text-3xl font-bold">Detail Pertemuan</h1>
       </div>
 
+      {submitMsg && (
+        <div className="glass-card p-4 border border-cyan-500/30 text-cyan-200 animate-slide-down">
+          {submitMsg}
+        </div>
+      )}
+
       {/* Daftar Tugas dari Dosen */}
       <div className="space-y-4">
         <h2 className="text-xl font-bold flex items-center gap-2">
@@ -87,7 +95,7 @@ export default function PertemuanDetail() {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-lg font-bold text-white">{t.title}</h3>
-                  <p className="text-sm text-slate-400 mt-1">{t.description}</p>
+                  <p className="text-sm text-slate-400 mt-1">{t.description || "Tanpa deskripsi"}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-slate-500">Diberikan: {new Date(t.tanggal_upload).toLocaleDateString()}</p>
@@ -95,16 +103,19 @@ export default function PertemuanDetail() {
                 </div>
               </div>
 
-              {/* View Mahasiswa: Form Pengumpulan */}
+              {/* View Mahasiswa: Navigasi ke form pengumpulan khusus */}
               {user?.role === "mahasiswa" && (
                 <div className="mt-6 pt-6 border-t border-slate-700/50">
-                  <h4 className="text-sm font-semibold mb-3">Upload Jawaban Anda</h4>
-                  <div className="flex items-center gap-3">
-                    <input type="file" className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-500/10 file:text-indigo-400 hover:file:bg-indigo-500/20" />
-                    <button className="shrink-0 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium text-sm transition-colors">
-                      Kumpulkan
-                    </button>
-                  </div>
+                  <h4 className="text-sm font-semibold mb-3">Pengumpulan Mahasiswa</h4>
+                  <p className="text-sm text-slate-400 mb-3">
+                    Gunakan halaman pengumpulan agar file jawaban lebih rapi dan terstruktur.
+                  </p>
+                  <Link
+                    to={`/mahasiswa/pengumpulan/${t.id}`}
+                    className="inline-flex items-center px-4 py-2 rounded-lg bg-fuchsia-500/20 text-fuchsia-300 hover:bg-fuchsia-500/30 transition-colors text-sm font-semibold"
+                  >
+                    Buka Form Pengumpulan
+                  </Link>
                 </div>
               )}
             </div>

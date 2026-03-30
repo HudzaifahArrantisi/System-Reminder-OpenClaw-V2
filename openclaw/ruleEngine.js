@@ -45,6 +45,8 @@ function getDaysDiff(d1, d2) {
  * @returns {String|null} Teks pesan Telegram html atau null jika tidak ada reminder.
  */
 function processTaskReminder(task, todayString = null) {
+  const appBaseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const taskUrl = `${appBaseUrl}/mahasiswa/pengumpulan/${task.id}`;
   const _today = todayString ? new Date(todayString) : new Date();
   
   // Waktu start_date & deadline dari database (timezone-agnostic treatment)
@@ -74,7 +76,8 @@ function processTaskReminder(task, todayString = null) {
       `<b>Judul Tugas:</b> ${eTitle}\n` +
       `<b>Diberikan:</b> ${startFmt}\n` +
       `<b>Deadline:</b> ${deadlineFmt}\n\n` +
-      `<b>Deskripsi:</b>\n${eDesc}`
+      `<b>Deskripsi:</b>\n${eDesc}\n\n` +
+      `🔗 <b>Link Tugas:</b> ${taskUrl}`
     );
   }
 
@@ -86,7 +89,8 @@ function processTaskReminder(task, todayString = null) {
       `<b>Matkul:</b> ${eCourse} (Pertemuan ${ePertemuan})\n` +
       `<b>Tugas:</b> ${eTitle}\n` +
       `<b>Deadline:</b> ${deadlineFmt}\n\n` +
-      `<i>Masih ada 3 hari lagi. Segera mulai kerjakan ya!</i> 💪`
+      `<i>Masih ada 3 hari lagi. Segera mulai kerjakan ya!</i> 💪\n\n` +
+      `🔗 <b>Link Tugas:</b> ${taskUrl}`
     );
   } else if (daysToDeadline === 2) {
     return (
@@ -94,7 +98,8 @@ function processTaskReminder(task, todayString = null) {
       `<b>Matkul:</b> ${eCourse} (Pertemuan ${ePertemuan})\n` +
       `<b>Tugas:</b> ${eTitle}\n` +
       `<b>Deadline:</b> lusa (${deadlineFmt})\n\n` +
-      `<i>Sisa 2 hari lagi! Jangan ditunda.</i> ⏳`
+      `<i>Sisa 2 hari lagi! Jangan ditunda.</i> ⏳\n\n` +
+      `🔗 <b>Link Tugas:</b> ${taskUrl}`
     );
   } else if (daysToDeadline === 1) {
     return (
@@ -102,7 +107,8 @@ function processTaskReminder(task, todayString = null) {
       `<b>Matkul:</b> ${eCourse} (Pertemuan ${ePertemuan})\n` +
       `<b>Tugas:</b> ${eTitle}\n` +
       `<b>Deadline:</b> besok (${deadlineFmt})\n\n` +
-      `<i>Besok adalah deadline! Cek kembali jawabanmu.</i> 🔥`
+      `<i>Besok adalah deadline! Cek kembali jawabanmu.</i> 🔥\n\n` +
+      `🔗 <b>Link Tugas:</b> ${taskUrl}`
     );
   } else if (daysToDeadline === 0) {
     return (
@@ -110,7 +116,8 @@ function processTaskReminder(task, todayString = null) {
       `<b>Matkul:</b> ${eCourse} (Pertemuan ${ePertemuan})\n` +
       `<b>Tugas:</b> ${eTitle}\n` +
       `<b>Batas Pengumpulan:</b> Hari ini (${deadlineFmt})\n\n` +
-      `<i>Hari terakhir pengumpulan! Segera submit tugasmu sekarang!</i> ❗`
+      `<i>Hari terakhir pengumpulan! Segera submit tugasmu sekarang!</i> ❗\n\n` +
+      `🔗 <b>Link Tugas:</b> ${taskUrl}`
     );
   }
 

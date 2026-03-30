@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Auth() {
@@ -9,6 +9,7 @@ export default function Auth() {
   const [error, setError] = useState("");
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +26,13 @@ export default function Auth() {
       }
 
       login(data.user);
-      navigate(`/${data.user.role}`);
+      
+      const from = location.state?.from;
+      if (from) {
+        navigate(from, { replace: true });
+      } else {
+        navigate(`/${data.user.role}`);
+      }
     } catch (err: any) {
       setError(err.message);
     }

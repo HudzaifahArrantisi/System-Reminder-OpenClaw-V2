@@ -1,5 +1,6 @@
 DROP TABLE IF EXISTS notification_log CASCADE;
 DROP TABLE IF EXISTS reminder CASCADE;
+DROP TABLE IF EXISTS tugas_submissions CASCADE;
 DROP TABLE IF EXISTS tugas CASCADE;
 DROP TABLE IF EXISTS mahasiswa_matkul CASCADE;
 DROP TABLE IF EXISTS pertemuan CASCADE;
@@ -37,6 +38,20 @@ CREATE TABLE tugas (
   tanggal_upload DATE NOT NULL,
   deadline DATE NOT NULL
 );
+
+CREATE TABLE tugas_submissions (
+  id SERIAL PRIMARY KEY,
+  tugas_id INT NOT NULL REFERENCES tugas(id) ON DELETE CASCADE,
+  mahasiswa_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  file_name VARCHAR(255) NOT NULL,
+  file_size BIGINT,
+  file_type VARCHAR(120),
+  submitted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (tugas_id, mahasiswa_id)
+);
+
+CREATE INDEX idx_tugas_submissions_mahasiswa_id ON tugas_submissions(mahasiswa_id);
+CREATE INDEX idx_tugas_submissions_tugas_id ON tugas_submissions(tugas_id);
 
 -- Seed Minimal Data
 INSERT INTO users (name, role, password) VALUES 
