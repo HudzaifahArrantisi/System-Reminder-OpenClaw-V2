@@ -4,14 +4,24 @@
   "description": "E-Learning Node.js Backend",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "start:legacy": "node server.js",
+    "dev:legacy": "nodemon server.js",
+    "start:modular": "node src/server.js",
+    "dev:modular": "nodemon src/server.js",
+    "migrate:new": "node database/runMigrations.js",
+    "seed:new": "node database/runSeeds.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
     "multer": "^2.0.2",
     "pg": "^8.11.5"
   },

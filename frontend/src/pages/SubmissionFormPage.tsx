@@ -98,7 +98,7 @@ export default function SubmissionFormPage() {
       await submitTugas(tugas.id, user.id, selectedFile);
       setMsg("Jawaban berhasil dikumpulkan. Anda akan diarahkan ke dashboard mahasiswa.");
       setSelectedFile(null);
-      setTimeout(() => navigate("/mahasiswa"), 1200);
+      setTimeout(() => navigate("/mahasiswa/dashboard"), 1200);
     } catch (err) {
       setMsg(err instanceof Error ? err.message : "Gagal mengumpulkan tugas.");
     } finally {
@@ -111,7 +111,7 @@ export default function SubmissionFormPage() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl md:text-3xl font-black text-white">Form Pengumpulan Tugas</h1>
         <Link
-          to="/mahasiswa"
+          to="/mahasiswa/dashboard"
           className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors text-sm"
         >
           Kembali

@@ -66,25 +66,42 @@ const getBadge = (daysLeft: number) => {
   return <span className="px-2.5 py-1 text-xs rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">H-3</span>;
 };
 
-const getStageStatus = (sent: boolean, stageDate: string) => {
-  if (sent) {
-    return {
-      text: "Sudah",
-      className: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-    };
+const getReminderBadge = (statusCode: ReminderItem["status_code"], fallbackDaysLeft: number) => {
+  if (statusCode === "h0") {
+    return (
+      <span className="px-2.5 py-1 text-xs rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse-glow">
+        H0 - Hari Ini
+      </span>
+    );
   }
 
-  if (getDaysLeft(stageDate) > 0) {
-    return {
-      text: "Belum jadwal",
-      className: "bg-slate-700/70 text-slate-300 border-slate-600/80",
-    };
+  if (statusCode === "h1") {
+    return <span className="px-2.5 py-1 text-xs rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30">H-1</span>;
   }
 
-  return {
-    text: "Belum",
-    className: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  };
+  if (statusCode === "h2") {
+    return <span className="px-2.5 py-1 text-xs rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">H-2</span>;
+  }
+
+  if (statusCode === "h3") {
+    return <span className="px-2.5 py-1 text-xs rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">H-3</span>;
+  }
+
+  return getBadge(fallbackDaysLeft);
+};
+
+const formatDateTime = (dateValue: string) => {
+  if (!dateValue) return "-";
+  const parsed = new Date(dateValue);
+  if (Number.isNaN(parsed.getTime())) return "-";
+
+  return parsed.toLocaleString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 export default function MahasiswaDashboard() {
@@ -120,7 +137,7 @@ export default function MahasiswaDashboard() {
   }, [user]);
 
   const reminderWindowList = useMemo(
-    () => reminderList.filter((t) => typeof t.days_left === "number" && t.days_left >= 0 && t.days_left <= 3),
+    () => reminderList.filter((t) => t.status_code === "h3" || t.status_code === "h2" || t.status_code === "h1" || t.status_code === "h0"),
     [reminderList]
   );
 
@@ -128,10 +145,7 @@ export default function MahasiswaDashboard() {
     () =>
       reminderList.filter((t) => {
         if (activeFilter === "all") return true;
-        if (activeFilter === "h3") return t.days_left === 3;
-        if (activeFilter === "h2") return t.days_left === 2;
-        if (activeFilter === "h1") return t.days_left === 1;
-        return t.days_left === 0;
+        return t.status_code === activeFilter;
       }),
     [activeFilter, reminderList]
   );
@@ -162,7 +176,7 @@ export default function MahasiswaDashboard() {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              to="/mahasiswa/courses"
+              to="/mahasiswa/matkul"
               className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-900 font-semibold hover:bg-white transition-colors"
             >
               Lihat Semua Matkul
@@ -218,15 +232,15 @@ export default function MahasiswaDashboard() {
         </div>
         <div className="glass-card p-4 border border-slate-700/70">
           <p className="text-xs uppercase tracking-widest text-slate-400">H-3</p>
-          <p className="text-3xl font-extrabold text-slate-200 mt-2">{reminderWindowList.filter((t) => t.reminder_label === "H-3").length}</p>
+          <p className="text-3xl font-extrabold text-slate-200 mt-2">{reminderWindowList.filter((t) => t.status_code === "h3").length}</p>
         </div>
         <div className="glass-card p-4 border border-slate-700/70">
           <p className="text-xs uppercase tracking-widest text-slate-400">H-2 / H-1</p>
-          <p className="text-3xl font-extrabold text-slate-200 mt-2">{reminderWindowList.filter((t) => t.reminder_label === "H-2" || t.reminder_label === "H-1").length}</p>
+          <p className="text-3xl font-extrabold text-slate-200 mt-2">{reminderWindowList.filter((t) => t.status_code === "h2" || t.status_code === "h1").length}</p>
         </div>
         <div className="glass-card p-4 border border-slate-700/70">
           <p className="text-xs uppercase tracking-widest text-slate-400">H0 Hari Ini</p>
-          <p className="text-3xl font-extrabold text-slate-200 mt-2">{reminderWindowList.filter((t) => t.reminder_label === "H0").length}</p>
+          <p className="text-3xl font-extrabold text-slate-200 mt-2">{reminderWindowList.filter((t) => t.status_code === "h0").length}</p>
         </div>
       </section>
 
@@ -274,41 +288,15 @@ export default function MahasiswaDashboard() {
                 <div className="relative z-10">
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-lg font-bold text-white leading-snug">{t.title}</h3>
-                    {getBadge(typeof t.days_left === "number" ? t.days_left : getDaysLeft(t.deadline))}
+                    {getReminderBadge(t.status_code, getDaysLeft(t.deadline))}
                   </div>
-                  <p className="text-sm text-slate-400 mt-2 line-clamp-2">{t.description || "Tanpa deskripsi"}</p>
+                  <p className="text-sm text-slate-400 mt-2 line-clamp-2">{t.status_label || "Status terbaru dari OpenClaw"}</p>
                   <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
                     <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700">{t.course_name}</span>
                     <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700">Pertemuan {t.pertemuan_ke}</span>
                     <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700">Deadline: {formatDateLong(t.deadline)}</span>
-                    <span
-                      className={`px-2.5 py-1 rounded-lg border ${
-                        t.notif_sent_today
-                          ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                          : "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                      }`}
-                    >
-                      {t.notif_sent_today ? "Notif Telegram: sudah" : "Notif Telegram: belum"}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                    {[
-                      { label: "H-3", sent: t.h3_sent, date: t.h3_date },
-                      { label: "H-2", sent: t.h2_sent, date: t.h2_date },
-                      { label: "H-1", sent: t.h1_sent, date: t.h1_date },
-                      { label: "H0", sent: t.h0_sent, date: t.h0_date },
-                    ].map((stage) => {
-                      const status = getStageStatus(stage.sent, stage.date);
-                      return (
-                        <div key={`${t.id}-${stage.label}`} className="rounded-lg border border-slate-700/80 bg-slate-900/70 px-2.5 py-2">
-                          <p className="text-slate-400 text-[11px]">{stage.label} - {formatDateLong(stage.date)}</p>
-                          <span className={`mt-1 inline-flex rounded-md border px-2 py-0.5 text-[11px] font-semibold ${status.className}`}>
-                            {status.text}
-                          </span>
-                        </div>
-                      );
-                    })}
+                    <span className="px-2.5 py-1 rounded-lg bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">Sumber: {t.source}</span>
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700">Update: {formatDateTime(t.updated_at)}</span>
                   </div>
 
                   <p className="mt-4 text-sm text-blue-300 font-semibold group-hover:translate-x-1 transition-transform">

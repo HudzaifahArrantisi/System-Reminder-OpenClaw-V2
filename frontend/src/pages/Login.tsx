@@ -1,16 +1,31 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { ROLE_DEFAULT_PATH, type AppRole } from "../shared/config/roleConfig";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+
+const VALID_ROLES = new Set<AppRole>(["mahasiswa", "dosen", "admin", "ortu", "ormawa", "ukm"]);
 
 export default function Login() {
-  const [name, setName] = useState("");
-  const [password, setPassword] = useState("password");
-  const [role, setRole] = useState<"dosen" | "mahasiswa">("mahasiswa");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  async function parseResponseSafely(response: Response) {
+    const rawText = await response.text();
+    try {
+      return rawText ? JSON.parse(rawText) : null;
+    } catch {
+      return {
+        rawText,
+      };
+    }
+  }
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "auto" });
@@ -22,24 +37,48 @@ export default function Login() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/login", {
+      const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, password, role }),
+        body: JSON.stringify({ identifier, password }),
       });
 
-      const data = await res.json();
+      const data = await parseResponseSafely(res);
       if (!res.ok) {
-        throw new Error(data.error || "Login gagal");
+        const isEndpointMissing = res.status === 404;
+        if (isEndpointMissing) {
+          throw new Error(
+            "Endpoint auth tidak ditemukan. Pastikan backend modular aktif (jalankan npm run start di folder backend-node) dan hentikan server lama yang memakai port 5000."
+          );
+        }
+        throw new Error(data?.error?.message || `Login gagal (${res.status})`);
       }
 
-      login(data.user);
+      const apiUser = data?.data?.user;
+      const apiTokens = data?.data?.tokens;
+
+      if (!apiUser?.role || !VALID_ROLES.has(apiUser.role as AppRole) || !apiTokens?.access_token || !apiTokens?.refresh_token) {
+        throw new Error("Response login tidak valid");
+      }
+
+      const role = apiUser.role as AppRole;
+      login({
+        user: {
+          id: apiUser.id,
+          role,
+          name: apiUser.full_name || apiUser.username || "User",
+          username: apiUser.username,
+          email: apiUser.email,
+        },
+        accessToken: apiTokens.access_token,
+        refreshToken: apiTokens.refresh_token,
+      });
 
       const from = (location.state as { from?: string } | null)?.from;
       if (from) {
         navigate(from, { replace: true });
       } else {
-        navigate(`/${data.user.role}`);
+        navigate(ROLE_DEFAULT_PATH[role], { replace: true });
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Terjadi kesalahan saat login");
@@ -114,45 +153,21 @@ export default function Login() {
               )}
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-300">Login sebagai</label>
-                <div className="grid grid-cols-2 rounded-xl bg-slate-800/90 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setRole("mahasiswa")}
-                    aria-pressed={role === "mahasiswa"}
-                    className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                      role === "mahasiswa"
-                        ? "bg-slate-100 text-slate-900 shadow"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    Mahasiswa
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRole("dosen")}
-                    aria-pressed={role === "dosen"}
-                    className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                      role === "dosen"
-                        ? "bg-slate-100 text-slate-900 shadow"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    Dosen
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-300">Nama lengkap</label>
+                <label className="mb-2 block text-sm font-medium text-slate-300">Identifier</label>
                 <input
                   type="text"
                   required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
-                  placeholder={role === "dosen" ? "Dosen" : "Mahasiswa"}
+                  placeholder="Email atau username"
                 />
+              </div>
+
+              <div>
+                <p className="text-xs text-slate-400">
+                  Redirect otomatis berdasarkan role akun: mahasiswa, dosen, admin, ormawa, ukm, atau ortu.
+                </p>
               </div>
 
               <div>
