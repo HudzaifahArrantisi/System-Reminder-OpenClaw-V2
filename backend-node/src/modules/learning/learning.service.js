@@ -51,12 +51,31 @@ async function deleteContent(req) {
 }
 
 async function listTaskSubmissions(req) {
-  await repository.listTaskSubmissions(req);
+  const result = await repository.listTaskSubmissions(req);
+
+  if (result?.taskNotFound) {
+    return {
+      statusCode: 404,
+      errorCode: 'NOT_FOUND',
+      payload: {
+        message: 'Tugas tidak ditemukan',
+      },
+    };
+  }
+
+  if (result?.forbidden) {
+    return {
+      statusCode: 403,
+      errorCode: 'FORBIDDEN',
+      payload: {
+        message: 'Anda tidak memiliki akses ke pengumpulan tugas ini',
+      },
+    };
+  }
+
   return {
-    statusCode: 501,
-    payload: {
-      message: 'learning.listTaskSubmissions belum diimplementasikan'
-    }
+    statusCode: 200,
+    payload: result,
   };
 }
 

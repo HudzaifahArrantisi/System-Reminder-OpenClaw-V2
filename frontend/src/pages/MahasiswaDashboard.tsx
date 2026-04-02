@@ -111,9 +111,11 @@ export default function MahasiswaDashboard() {
   const [reminderList, setReminderList] = useState<ReminderItem[]>([]);
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
 
-  const loadTugasMahasiswa = async () => {
+  const loadTugasMahasiswa = async (silent = false) => {
     if (!user) return;
-    setLoading(true);
+    if (!silent) {
+      setLoading(true);
+    }
     try {
       const [tugasData, reminderData] = await Promise.all([
         fetchTugas("mahasiswa", user.id),
@@ -128,12 +130,20 @@ export default function MahasiswaDashboard() {
     } catch (error) {
       console.error(error);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     loadTugasMahasiswa();
+
+    const intervalId = window.setInterval(() => {
+      loadTugasMahasiswa(true);
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
   }, [user]);
 
   const reminderWindowList = useMemo(
@@ -260,7 +270,9 @@ export default function MahasiswaDashboard() {
             </button>
           ))}
           <button
-            onClick={loadTugasMahasiswa}
+            onClick={() => {
+              void loadTugasMahasiswa();
+            }}
             className="ml-auto px-4 py-2 rounded-xl text-sm font-semibold bg-slate-700 text-slate-100 hover:bg-slate-600 transition-colors"
           >
             Muat Ulang

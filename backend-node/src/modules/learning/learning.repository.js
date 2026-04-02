@@ -1,3 +1,4 @@
+const path = require('path');
 const { pool } = require('../../config/db');
 
 const STATUS_ORDER = {
@@ -52,7 +53,147 @@ function getTaskStage(tanggalUpload, deadline, todayValue = null) {
   return { statusCode: 'idle', statusLabel: 'Monitoring', reminderType: null };
 }
 
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function formatDateForTelegram(dateValue) {
+  if (!dateValue) return '-';
+  const parsed = new Date(dateValue);
+  if (Number.isNaN(parsed.getTime())) return '-';
+
+  return parsed.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+async function dispatchInstantTelegramReminder(taskInfo) {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const channelId = process.env.TELEGRAM_CHANNEL_ID;
+
+  if (!botToken || !channelId) {
+    return;
+  }
+
+  const appBaseUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const taskUrl = `${appBaseUrl}/mahasiswa/pengumpulan/${taskInfo.taskId}`;
+
+  const message =
+    `📢 <b>TUGAS BARU</b>\n\n` +
+    `<b>Matkul:</b> ${escapeHtml(taskInfo.courseName)}\n` +
+    `<b>Pertemuan:</b> ${escapeHtml(taskInfo.pertemuanKe)}\n` +
+    `<b>Tugas:</b> ${escapeHtml(taskInfo.title)}\n` +
+    `<b>Upload:</b> ${escapeHtml(formatDateForTelegram(taskInfo.tanggalUpload))}\n` +
+    `<b>Deadline:</b> ${escapeHtml(formatDateForTelegram(taskInfo.deadline))}\n\n` +
+    `<b>Deskripsi:</b>\n${escapeHtml(taskInfo.description || '-') }\n\n` +
+    `🔗 <b>Buka tugas:</b> ${taskUrl}`;
+
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: channelId,
+      text: message,
+      parse_mode: 'HTML',
+    }),
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload?.ok) {
+    throw new Error(payload?.description || 'Gagal kirim notifikasi Telegram');
+  }
+
+  await pool.query(
+    `
+      INSERT INTO notification_log (tugas_id, sent_at_date, notification_type)
+      VALUES ($1, CURRENT_DATE, 'instant')
+      ON CONFLICT DO NOTHING
+    `,
+    [taskInfo.taskId]
+  );
+}
+
 async function ensureLearningTables() {
+  await pool.query(`
+    DO $$
+    DECLARE
+      legacy_suffix text := to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
+      pertemuan_course_id_type text;
+      tugas_course_id_type text;
+      tugas_dosen_id_type text;
+      submissions_mahasiswa_id_type text;
+    BEGIN
+      IF to_regclass('public.pertemuan') IS NOT NULL THEN
+        SELECT data_type
+        INTO pertemuan_course_id_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'pertemuan'
+          AND column_name = 'course_id'
+        LIMIT 1;
+
+        IF pertemuan_course_id_type IS DISTINCT FROM 'uuid' THEN
+          EXECUTE format('ALTER TABLE public.pertemuan RENAME TO %I', 'pertemuan_legacy_' || legacy_suffix);
+        END IF;
+      END IF;
+
+      IF to_regclass('public.tugas') IS NOT NULL THEN
+        SELECT data_type
+        INTO tugas_course_id_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tugas'
+          AND column_name = 'course_id'
+        LIMIT 1;
+
+        SELECT data_type
+        INTO tugas_dosen_id_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tugas'
+          AND column_name = 'dosen_id'
+        LIMIT 1;
+
+        IF tugas_course_id_type IS DISTINCT FROM 'uuid' OR tugas_dosen_id_type IS DISTINCT FROM 'uuid' THEN
+          IF to_regclass('public.openclaw_task_status') IS NOT NULL THEN
+            EXECUTE format('ALTER TABLE public.openclaw_task_status RENAME TO %I', 'openclaw_task_status_legacy_' || legacy_suffix);
+          END IF;
+
+          IF to_regclass('public.notification_log') IS NOT NULL THEN
+            EXECUTE format('ALTER TABLE public.notification_log RENAME TO %I', 'notification_log_legacy_' || legacy_suffix);
+          END IF;
+
+          IF to_regclass('public.tugas_submissions') IS NOT NULL THEN
+            EXECUTE format('ALTER TABLE public.tugas_submissions RENAME TO %I', 'tugas_submissions_legacy_' || legacy_suffix);
+          END IF;
+
+          EXECUTE format('ALTER TABLE public.tugas RENAME TO %I', 'tugas_legacy_' || legacy_suffix);
+        END IF;
+      END IF;
+
+      IF to_regclass('public.tugas_submissions') IS NOT NULL THEN
+        SELECT data_type
+        INTO submissions_mahasiswa_id_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tugas_submissions'
+          AND column_name = 'mahasiswa_id'
+        LIMIT 1;
+
+        IF submissions_mahasiswa_id_type IS DISTINCT FROM 'uuid' THEN
+          EXECUTE format('ALTER TABLE public.tugas_submissions RENAME TO %I', 'tugas_submissions_legacy_' || legacy_suffix);
+        END IF;
+      END IF;
+    END
+    $$;
+  `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS pertemuan (
       id SERIAL PRIMARY KEY,
@@ -61,6 +202,11 @@ async function ensureLearningTables() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE (course_id, pertemuan_ke)
     )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_pertemuan_course_uuid
+    ON pertemuan (course_id, pertemuan_ke)
   `);
 
   await pool.query(`
@@ -78,12 +224,12 @@ async function ensureLearningTables() {
   `);
 
   await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_tugas_pertemuan_deadline
+    CREATE INDEX IF NOT EXISTS idx_tugas_pertemuan_deadline_uuid
     ON tugas (pertemuan_id, deadline, id DESC)
   `);
 
   await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_tugas_upload
+    CREATE INDEX IF NOT EXISTS idx_tugas_upload_uuid
     ON tugas (tanggal_upload DESC, id DESC)
   `);
 
@@ -123,7 +269,7 @@ async function ensureLearningTables() {
   `);
 
   await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_openclaw_task_status_code
+    CREATE INDEX IF NOT EXISTS idx_openclaw_task_status_code_uuid
     ON openclaw_task_status (status_code, updated_at DESC)
   `);
 }
@@ -165,8 +311,88 @@ async function deleteContent(_req) {
   return null;
 }
 
-async function listTaskSubmissions(_req) {
-  return null;
+async function listTaskSubmissions(req) {
+  await ensureLearningTables();
+
+  const { taskId } = req.params;
+  const role = req.auth?.role;
+  const requesterId = String(req.auth?.sub || '');
+
+  const taskResult = await pool.query(
+    `
+      SELECT
+        t.id,
+        t.title,
+        t.description,
+        t.tanggal_upload,
+        t.deadline,
+        t.pertemuan_id,
+        t.dosen_id,
+        c.name AS course_name,
+        p.pertemuan_ke
+      FROM tugas t
+      JOIN courses c ON c.id::text = t.course_id::text
+      JOIN pertemuan p ON p.id::text = t.pertemuan_id::text
+      WHERE t.id = $1
+      LIMIT 1
+    `,
+    [taskId]
+  );
+
+  if (taskResult.rows.length === 0) {
+    return { taskNotFound: true };
+  }
+
+  const task = taskResult.rows[0];
+  if (role === 'dosen' && String(task.dosen_id) !== requesterId) {
+    return { forbidden: true };
+  }
+
+  const submissionsResult = await pool.query(
+    `
+      SELECT
+        ts.id,
+        ts.tugas_id,
+        ts.mahasiswa_id,
+        ts.file_name,
+        ts.file_size,
+        ts.file_type,
+        ts.stored_path,
+        ts.submitted_at,
+        COALESCE(u.full_name, u.username, ul.name, 'Mahasiswa') AS mahasiswa_name,
+        u.username AS mahasiswa_username,
+        u.email AS mahasiswa_email
+      FROM tugas_submissions ts
+      LEFT JOIN users u ON u.id::text = ts.mahasiswa_id::text
+      LEFT JOIN users_legacy ul ON ul.id::text = ts.mahasiswa_id::text
+      WHERE ts.tugas_id = $1
+      ORDER BY ts.submitted_at DESC, ts.id DESC
+    `,
+    [taskId]
+  );
+
+  const submissions = submissionsResult.rows.map((row) => {
+    const storedPath = row.stored_path || '';
+    const storedFileName = storedPath ? path.basename(storedPath) : null;
+
+    return {
+      ...row,
+      file_url: storedFileName ? `/uploads/${encodeURIComponent(storedFileName)}` : null,
+    };
+  });
+
+  return {
+    task: {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      tanggal_upload: task.tanggal_upload,
+      deadline: task.deadline,
+      course_name: task.course_name,
+      pertemuan_ke: task.pertemuan_ke,
+    },
+    submissions,
+  };
 }
 
 async function createTaskSubmission(_req) {
@@ -192,8 +418,8 @@ async function listTugasByPertemuan(req) {
           c.name AS course_name,
           p.pertemuan_ke
         FROM tugas t
-        JOIN courses c ON c.id = t.course_id
-        JOIN pertemuan p ON p.id = t.pertemuan_id
+        JOIN courses c ON c.id::text = t.course_id::text
+        JOIN pertemuan p ON p.id::text = t.pertemuan_id::text
         WHERE t.pertemuan_id = $1
           AND NOT EXISTS (
             SELECT 1
@@ -216,8 +442,8 @@ async function listTugasByPertemuan(req) {
         c.name AS course_name,
         p.pertemuan_ke
       FROM tugas t
-      JOIN courses c ON c.id = t.course_id
-      JOIN pertemuan p ON p.id = t.pertemuan_id
+      JOIN courses c ON c.id::text = t.course_id::text
+      JOIN pertemuan p ON p.id::text = t.pertemuan_id::text
       WHERE t.pertemuan_id = $1
       ORDER BY t.deadline ASC, t.id DESC
     `,
@@ -242,8 +468,8 @@ async function listTugas(req) {
           p.pertemuan_ke,
           (t.deadline::date - CURRENT_DATE) AS days_left
         FROM tugas t
-        JOIN courses c ON c.id = t.course_id
-        JOIN pertemuan p ON p.id = t.pertemuan_id
+        JOIN courses c ON c.id::text = t.course_id::text
+        JOIN pertemuan p ON p.id::text = t.pertemuan_id::text
         WHERE NOT EXISTS (
           SELECT 1
           FROM tugas_submissions ts
@@ -265,8 +491,8 @@ async function listTugas(req) {
         c.name AS course_name,
         p.pertemuan_ke
       FROM tugas t
-      JOIN courses c ON c.id = t.course_id
-      JOIN pertemuan p ON p.id = t.pertemuan_id
+      JOIN courses c ON c.id::text = t.course_id::text
+      JOIN pertemuan p ON p.id::text = t.pertemuan_id::text
       ORDER BY t.tanggal_upload DESC, t.id DESC
     `
   );
@@ -292,7 +518,7 @@ async function createLegacyTask(req) {
         p.pertemuan_ke,
         c.name AS course_name
       FROM pertemuan p
-      JOIN courses c ON c.id = p.course_id
+      JOIN courses c ON c.id::text = p.course_id::text
       WHERE p.id = $1
       LIMIT 1
     `,
@@ -315,6 +541,18 @@ async function createLegacyTask(req) {
   const tugas = insertResult.rows[0];
   const stage = getTaskStage(tugas.tanggal_upload, tugas.deadline);
   await upsertTaskStatus(tugas.id, stage);
+
+  await dispatchInstantTelegramReminder({
+    taskId: tugas.id,
+    title: tugas.title,
+    description: tugas.description,
+    courseName: meetingInfo.rows[0].course_name,
+    pertemuanKe: meetingInfo.rows[0].pertemuan_ke,
+    tanggalUpload: tugas.tanggal_upload,
+    deadline: tugas.deadline,
+  }).catch((error) => {
+    console.error('Gagal kirim notifikasi Telegram instan:', error.message);
+  });
 
   return {
     tugas,
@@ -399,8 +637,8 @@ async function listOpenClawTaskStatus(req) {
         s.updated_at,
         s.source
       FROM tugas t
-      JOIN courses c ON c.id = t.course_id
-      JOIN pertemuan p ON p.id = t.pertemuan_id
+      JOIN courses c ON c.id::text = t.course_id::text
+      JOIN pertemuan p ON p.id::text = t.pertemuan_id::text
       LEFT JOIN openclaw_task_status s ON s.tugas_id = t.id
       ${filterClause}
       ORDER BY t.deadline ASC, t.id DESC

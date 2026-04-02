@@ -52,7 +52,7 @@ async function getActiveTasks() {
     LEFT JOIN courses c ON c.id::text = t.course_id::text
     LEFT JOIN courses_legacy cl ON cl.id::text = t.course_id::text
     LEFT JOIN pertemuan p ON p.id::text = t.pertemuan_id::text
-    LEFT JOIN users_legacy ul ON ul.id = t.dosen_id
+    LEFT JOIN users_legacy ul ON ul.id::text = t.dosen_id::text
     LEFT JOIN users uv2 ON uv2.id::text = t.dosen_id::text
     WHERE CURRENT_DATE >= t.tanggal_upload
       AND CURRENT_DATE <= t.deadline

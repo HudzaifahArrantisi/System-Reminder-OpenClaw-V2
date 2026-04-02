@@ -1,0 +1,27 @@
+@startuml
+title Sistem Reminder Tugas
+
+actor Dosen
+actor Admin
+actor Mahasiswa
+
+rectangle "Sistem Reminder Tugas" {
+
+    Dosen --> (Input Tugas ke E-Learning)
+    Admin --> (Kelola Data Mahasiswa)
+
+    (Input Tugas ke E-Learning) --> (Database PostgreSQL)
+    (Kelola Data Mahasiswa) --> (Database PostgreSQL)
+
+    (Database PostgreSQL) --> (OpenClaw Automation Engine)
+
+    (OpenClaw Automation Engine) --> (Generate Rule)
+    (OpenClaw Automation Engine) --> (Scheduler)
+    (OpenClaw Automation Engine) --> (Trigger Reminder)
+
+    (Trigger Reminder) --> (Telegram Bot)
+    (Telegram Bot) --> Mahasiswa
+    Mahasiswa --> (Terima Notifikasi)
+}
+
+@enduml

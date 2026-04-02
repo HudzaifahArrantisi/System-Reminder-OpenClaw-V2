@@ -34,14 +34,24 @@ export default function Feed({ showStatusPanel = true }: FeedProps) {
   const canComment = Boolean(user?.id);
 
   const loadPosts = async () => {
-    const postData = await fetchFeedPosts(user?.id);
-    setPosts(postData);
+    try {
+      const postData = await fetchFeedPosts(user?.id);
+      setPosts(postData);
+    } catch (error) {
+      console.warn('Gagal memuat feed, fallback ke daftar kosong:', error);
+      setPosts([]);
+    }
   };
 
   const loadStatusPanel = async () => {
     if (!user) return;
-    const statusData = await fetchTugasReminders(user.role, user.id);
-    setStatusItems(statusData);
+    try {
+      const statusData = await fetchTugasReminders(user.role, user.id);
+      setStatusItems(statusData);
+    } catch (error) {
+      console.warn('Gagal memuat status OpenClaw, fallback ke daftar kosong:', error);
+      setStatusItems([]);
+    }
   };
 
   useEffect(() => {

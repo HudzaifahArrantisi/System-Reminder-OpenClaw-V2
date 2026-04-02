@@ -68,8 +68,8 @@ function getTaskStage(task, todayString = null) {
 }
 
 function processTaskReminder(task, todayString = null) {
-  const appBaseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-  const taskPathTemplate = process.env.FRONTEND_TASK_PATH || '/mahasiswa/matkul';
+  const appBaseUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const taskPathTemplate = process.env.FRONTEND_TASK_PATH || '/mahasiswa/pengumpulan/:taskId';
   const taskPath = taskPathTemplate.includes(':taskId')
     ? taskPathTemplate.replace(':taskId', String(task.id))
     : taskPathTemplate;

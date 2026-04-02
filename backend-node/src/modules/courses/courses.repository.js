@@ -1,17 +1,30 @@
 const { pool } = require('../../config/db');
 
-const DEFAULT_COURSES = [
-  { code: 'IF201', name: 'Rekayasa Perangkat Lunak' },
-  { code: 'IF202', name: 'Basis Data' },
-  { code: 'IF203', name: 'Jaringan Komputer' },
-  { code: 'IF204', name: 'Kecerdasan Buatan' },
-  { code: 'IF205', name: 'Pemrograman Web' },
-  { code: 'IF206', name: 'Struktur Data' },
-  { code: 'IF207', name: 'Matematika Diskrit' },
-  { code: 'IF208', name: 'Sistem Operasi' },
-];
-
 async function ensureAcademicTables() {
+  await pool.query(`
+    DO $$
+    DECLARE
+      course_id_type text;
+      legacy_name text;
+    BEGIN
+      IF to_regclass('public.pertemuan') IS NOT NULL THEN
+        SELECT data_type
+        INTO course_id_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'pertemuan'
+          AND column_name = 'course_id'
+        LIMIT 1;
+
+        IF course_id_type IS DISTINCT FROM 'uuid' THEN
+          legacy_name := 'pertemuan_legacy_' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
+          EXECUTE format('ALTER TABLE public.pertemuan RENAME TO %I', legacy_name);
+        END IF;
+      END IF;
+    END
+    $$;
+  `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS pertemuan (
       id SERIAL PRIMARY KEY,
@@ -23,79 +36,24 @@ async function ensureAcademicTables() {
   `);
 
   await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_pertemuan_course
+    CREATE INDEX IF NOT EXISTS idx_pertemuan_course_uuid
     ON pertemuan (course_id, pertemuan_ke)
   `);
-}
-
-async function findAnyLecturerId() {
-  const result = await pool.query(
-    `
-      SELECT id
-      FROM users
-      WHERE role_code = 'dosen' AND is_active = true AND deleted_at IS NULL
-      ORDER BY created_at ASC
-      LIMIT 1
-    `
-  );
-
-  return result.rows[0]?.id || null;
-}
-
-async function ensureDefaultCourses(lecturerUserId) {
-  for (const course of DEFAULT_COURSES) {
-    await pool.query(
-      `
-        INSERT INTO courses (code, name, lecturer_user_id, semester, academic_year, credits)
-        VALUES ($1, $2, $3, 2, '2026/2027', 3)
-        ON CONFLICT (code)
-        DO UPDATE SET
-          name = EXCLUDED.name,
-          updated_at = now(),
-          deleted_at = NULL
-      `,
-      [course.code, course.name, lecturerUserId]
-    );
-  }
-
-  const codes = DEFAULT_COURSES.map((course) => course.code);
-  const coursesResult = await pool.query(
-    `
-      SELECT id, code, name, lecturer_user_id
-      FROM courses
-      WHERE code = ANY($1::text[])
-      ORDER BY array_position($1::text[], code)
-    `,
-    [codes]
-  );
-
-  for (const course of coursesResult.rows) {
-    await pool.query(
-      `
-        INSERT INTO pertemuan (course_id, pertemuan_ke)
-        SELECT $1::uuid, slot
-        FROM generate_series(1, 16) AS slot
-        ON CONFLICT (course_id, pertemuan_ke) DO NOTHING
-      `,
-      [course.id]
-    );
-  }
-
-  return coursesResult.rows;
 }
 
 async function listCourses(req) {
   await ensureAcademicTables();
 
-  const role = req.auth?.role;
-  const requesterId = req.auth?.sub;
+  const result = await pool.query(
+    `
+      SELECT c.id, c.code, c.name, c.lecturer_user_id
+      FROM courses c
+      WHERE c.deleted_at IS NULL
+      ORDER BY c.name ASC
+    `
+  );
 
-  const lecturerUserId = role === 'dosen' ? requesterId : await findAnyLecturerId();
-  if (!lecturerUserId) {
-    return [];
-  }
-
-  const rows = await ensureDefaultCourses(lecturerUserId);
+  const rows = result.rows;
   return rows.map((row) => ({
     id: row.id,
     code: row.code,
@@ -143,6 +101,19 @@ async function removeEnrollment(_req) {
 
 async function listMeetings(req) {
   await ensureAcademicTables();
+
+  await pool.query(
+    `
+      INSERT INTO pertemuan (course_id, pertemuan_ke)
+      SELECT c.id, slot
+      FROM courses c
+      CROSS JOIN generate_series(1, 16) AS slot
+      WHERE c.id::text = $1
+        AND c.deleted_at IS NULL
+      ON CONFLICT (course_id, pertemuan_ke) DO NOTHING
+    `,
+    [req.params.courseId]
+  );
 
   const result = await pool.query(
     `

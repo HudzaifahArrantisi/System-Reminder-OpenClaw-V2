@@ -3,10 +3,8 @@ const repository = require('./feed.repository');
 async function listPosts(req) {
   await repository.listPosts(req);
   return {
-    statusCode: 501,
-    payload: {
-      message: 'feed.listPosts belum diimplementasikan'
-    }
+    statusCode: 200,
+    payload: [],
   };
 }
 
